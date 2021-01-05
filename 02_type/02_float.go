@@ -20,5 +20,4 @@ func main () {
   fmt.Println(num4)
   fmt.Println(num5)
   fmt.Println(num6)
-  
 }
