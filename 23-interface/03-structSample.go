@@ -23,11 +23,9 @@ type Printer interface {
 func main() {
   var i MyInt = 5
   r := Rectangle{10, 20}
-  var p Printer
+  // var p Printer
 
-  p = i
-  p.Print()
+  i.Print()
 
-  p = r
-  p.Print()
+  r.Print()
 }
