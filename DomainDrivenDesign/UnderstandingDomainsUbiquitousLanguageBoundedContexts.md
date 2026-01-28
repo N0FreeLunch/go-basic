@@ -44,7 +44,7 @@ Lead構造体、Customer構造体、Convert関数を作成して、ドメイン�
 
 異なる二つの小さいドメインで使っている同じ単語はドメインによって異なる意味で使う場合があります。
 
-### 例
+#### 例
 
 「サブスクリプション (Subscription)」システムと「マーケティング (Marketing)」システムが、互いに分離されたコンテキストであると仮定
 
@@ -53,3 +53,101 @@ Lead構造体、Customer構造体、Convert関数を作成して、ドメイン�
 各コンテキストにおいて、これらの用語をソフトウェアシステムにモデル化する際、サブドメイン別語る方法は異なる場合があり
 
 ドメインによって、同じ言葉でも違う意味で利用される場合があるので、その違いを認識する必要性があります。これらを無理に一つのモデルに統一する必要がない。
+
+### ユビキタス言語(Ubiquitous Language)との関係
+
+ユビキタス言語は、単一の境界づけられたコンテキスト内でのみ適用されるべき。
+
+異なるサブドメインで一つのユビキタス言語を適用しようとすると、言葉の厳密さが失われる可能性がある。
+
+同じ用語でもサブドメイン別、別の意味で使用される場合があると意識するのが良い。
+
+### コンテキスト間の通信
+
+#### 公開ホストサービス (Open Host Service, OHS)
+
+ドメインの明細の簡単に縮小して外部に公開戦略ドメインモデルの詳細を簡素化し、外部向けのプロトコルとして公開する戦略
+
+内部の複雑なロジックを隠蔽（いんぺい）し、よりシンプルなインターフェース（API）を提供することで利用しやすくする
+
+内部ロジックへの直接的なアクセスは許可せず、カプセル化された公開機能のみ利用可能にすることで、内部システムの整合性が壊れるのを防ぐ
+
+#### 公表された言語 (Published Language)
+
+ソフトウェア開発において、内部のドメイン用語をそのまま外部で使用するのが難しい場合がある
+
+フロントエンド、バックエンド、企画者、他のマイクロサービス担当者など、異なる領域間での「共通（きょうつう）のユビキタス言語」が必要です。
+
+お互いに意思疎通を図るために取り決めた「公式なデータフォーマット（規約）」が必要
+
+例えば、システム内部では「用途_ある用語」のような名前で扱っていても、公式なデータフォーマットには単に「ある用語」として表記
+
+JSONスキーマ、OpenAPI (Swagger) 仕様書、Protobufファイル(.proto)などは、この「共通のユビキタス言語」に基づいて記述
+
+#### 腐敗防止層 (Anti-Corruption Layer, ACL)
+
+外部システムやレガシーコードのモデルが、自らのドメインの「ユビキタス言語」と一致しない場合に適用する戦略
+
+新規システム、改善作業では過去のコード・用語が曖昧な外部システムの用語を明確なドメイン用語を使って記述する戦略
+
+汚染の防止: 外部システム（例：非常に古いレガシーシステムや他社API）が、UserDescInfo のような曖昧な用語や、複雑怪奇なデータ構造を使っていると仮定
+
+問題点: 外部の曖昧なモデルをそのまま持ち込むと、ドメインモデルが「汚染」され、ロジックが不明瞭（ふめいりょう）になります。これはシステムの整合性（せいごうせい）を損なう(こそなう)原因
+
+翻訳の役割: 外部のプロトコール・レガシコードの上に何かロジックを組む前に ACL（翻訳機） を置き、外部の UserDescInfo を、自分のドメインのきれいに整理された CustomerProfile というオブジェクトに変換して利用
+
+外部システムとの境界にACL（翻訳層）を配置し、外部の UserDescInfo を、内部の洗練（せんれん）された CustomerProfile オブジェクトに変換して利用
+
+効果: 外部システムの用語や構造に依存せず、内部では定義した「ユビキタス言語」の純粋性（じゅんすいせい）を（おたもつ）ことができる。
+
+#### ACLの例
+
+```go
+import (
+	"errors"
+	"fmt"
+	"time"
+)
+
+type CampaignID string
+
+type Campaign struct {
+	ID          CampaignID
+	Title       string
+	Description string
+	EndDate     time.Time
+}
+
+type MarketingCampaignModel struct {
+	Id       string `json:"id"`
+	Metadata struct {
+		Name     string `json:"name"`
+		Category string `json:"category"`
+		EndDate  string `json:"endDate"`
+	} `json:"metadata"`
+}
+
+type CampaignTranslator struct{}
+
+func (t *CampaignTranslator) Translate(input MarketingCampaignModel) (*Campaign, error) {
+	if input.Id == "" {
+		return nil, errors.New("campaign ID is missing from marketing data")
+	}
+
+	endDate, err := time.Parse("2006-01-02", input.Metadata.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format for campaign %s: %w", input.Id, err)
+	}
+
+	if endDate.Before(time.Now()) {
+		// return nil, errors.New("cannot import past campaigns")
+	}
+
+	return &Campaign{
+		ID:          CampaignID(input.Id),
+		Title:       input.Metadata.Name,
+		Description: input.Metadata.Category,
+		EndDate:     endDate,
+	}, nil
+}
+```
