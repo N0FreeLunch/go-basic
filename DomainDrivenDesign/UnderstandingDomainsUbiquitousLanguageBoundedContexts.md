@@ -98,7 +98,7 @@ JSONスキーマ、OpenAPI (Swagger) 仕様書、Protobufファイル(.proto)な
 
 外部システムとの境界にACL（翻訳層）を配置し、外部の UserDescInfo を、内部の洗練（せんれん）された CustomerProfile オブジェクトに変換して利用
 
-効果: 外部システムの用語や構造に依存せず、内部では定義した「ユビキタス言語」の純粋性（じゅんすいせい）を（おたもつ）ことができる。
+効果: 外部システムの用語や構造に依存せず、内部では定義した「ユビキタス言語」の純粋性（じゅんすいせい）をお保つ（おたもつ）ことができる。
 
 #### ACLの例
 
@@ -151,3 +151,13 @@ func (t *CampaignTranslator) Translate(input MarketingCampaignModel) (*Campaign,
 	}, nil
 }
 ```
+
+MarketingCampaignModel: 外部（マーケティングチーム）から送られてくるデータ形式をそのまま模した構造体（DTO）
+
+Campaign: 外部フォーマットを内部フォーマットにマッピングするための構造体。これにより、外部フォーマットへの直接的な依存を防ぐ
+
+CampaignTranslator: 変換ロジックを担当する構造体。Translate 関数は (t *CampaignTranslator) をレシーバーとして定義
+
+CampaignTranslator 構造体に属するメソッドを定義するために、レシーバー（Receiver）を (t *CampaignTranslator) とした Translate 関数を定義
+
+変換フロー: Translate 関数は、引数として外部データの MarketingCampaignModel を受け取り、内部ロジックで安全に扱える Campaign 構造体に変換して返す
